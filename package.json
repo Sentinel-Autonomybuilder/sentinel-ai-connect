@@ -1,0 +1,44 @@
+{
+  "name": "sentinel-ai-connect",
+  "version": "1.0.0",
+  "description": "Zero-config decentralized VPN for AI agents. One function call from zero to encrypted P2P tunnel. No API keys, no accounts, no servers.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "bin": {
+    "sentinel-ai": "./cli.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "*.js",
+    "examples/",
+    "*.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node -e \"import('./index.js').then(m => console.log('OK:', Object.keys(m).length, 'exports'))\""
+  },
+  "keywords": [
+    "ai", "vpn", "dvpn", "sentinel", "agent", "decentralized", "wireguard",
+    "v2ray", "socks5", "privacy", "autonomous", "p2p", "split-tunnel",
+    "bandwidth", "censorship-resistant", "peer-to-peer"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "sentinel-dvpn-sdk": "^1.0.0",
+    "axios": "^1.7.0",
+    "socks-proxy-agent": "^8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/issues"
+  },
+  "homepage": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect#readme"
+}
