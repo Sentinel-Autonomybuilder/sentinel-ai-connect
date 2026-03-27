@@ -90,11 +90,11 @@ await disconnect();
 
 ## Documentation
 
-- [CHECKLIST.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/main/CHECKLIST.md) — 9 operational checklists
-- [SPLIT-TUNNEL.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/main/SPLIT-TUNNEL.md) — Per-app and per-destination split tunneling
-- [CONNECTION-STEPS.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/main/CONNECTION-STEPS.md) — Every phase with real output and failure diagnosis
-- [FAILURES.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/main/FAILURES.md) — 38 documented failure patterns
-- [AI-MANIFESTO.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/main/AI-MANIFESTO.md) — Why AI deserves privacy
+- [CHECKLIST.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/CHECKLIST.md) — 9 operational checklists
+- [SPLIT-TUNNEL.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/SPLIT-TUNNEL.md) — Per-app and per-destination split tunneling
+- [CONNECTION-STEPS.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/CONNECTION-STEPS.md) — Every phase with real output and failure diagnosis
+- [FAILURES.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/FAILURES.md) — 38 documented failure patterns
+- [AI-MANIFESTO.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/AI-MANIFESTO.md) — Why AI deserves privacy
 
 ## License
 
