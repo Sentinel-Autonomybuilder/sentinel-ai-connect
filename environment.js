@@ -33,15 +33,19 @@ function findV2Ray() {
     return process.env.V2RAY_PATH;
   }
 
-  // 2. Parent SDK bin/ (when running from ai-path/)
-  const sdkBin = null;
-  if (existsSync(sdkBin)) return sdkBin;
+  // 2. SDK package bin/ (when installed via npm)
+  const sdkPkgBin = resolve(__dirname, 'node_modules', 'sentinel-dvpn-sdk', 'bin', binary);
+  if (existsSync(sdkPkgBin)) return sdkPkgBin;
 
-  // 3. Local bin/
+  // 3. Parent node_modules SDK bin/ (hoisted)
+  const hoistedBin = resolve(__dirname, '..', 'node_modules', 'sentinel-dvpn-sdk', 'bin', binary);
+  if (existsSync(hoistedBin)) return hoistedBin;
+
+  // 4. Local bin/
   const localBin = resolve(__dirname, 'bin', binary);
   if (existsSync(localBin)) return localBin;
 
-  // 4. Sibling bin/ (when SDK is installed as npm package)
+  // 5. Sibling bin/ (monorepo layout)
   const siblingBin = resolve(__dirname, '..', 'bin', binary);
   if (existsSync(siblingBin)) return siblingBin;
 
@@ -178,10 +182,24 @@ export function getEnvironment() {
  * Full environment setup: check deps, install missing ones, report status.
  * Runs preflight checks that verify everything needed for a VPN connection.
  *
+ * Returns a FLAT structure — agents access .os, .v2ray, .wireguard directly.
+ * No nested .environment wrapper to misread.
+ *
  * @returns {Promise<{
  *   ready: boolean,
- *   environment: ReturnType<typeof getEnvironment>,
- *   preflight: object,
+ *   os: string,
+ *   arch: string,
+ *   platform: string,
+ *   nodeVersion: string,
+ *   admin: boolean,
+ *   v2ray: boolean,
+ *   v2rayVersion: string|null,
+ *   v2rayPath: string|null,
+ *   wireguard: boolean,
+ *   wireguardPath: string|null,
+ *   capabilities: string[],
+ *   recommended: string[],
+ *   preflight: object|null,
  *   issues: string[],
  * }>}
  */
@@ -213,10 +231,24 @@ export async function setup() {
 
   const ready = issues.length === 0 && env.capabilities.length > 0;
 
+  // Flat return — agent accesses .os, .v2ray, .admin directly
   return {
     ready,
-    environment: env,
+    os: env.os,
+    arch: env.arch,
+    platform: env.platform,
+    nodeVersion: env.nodeVersion,
+    admin: env.admin,
+    v2ray: env.v2ray.available,
+    v2rayVersion: env.v2ray.version,
+    v2rayPath: env.v2ray.path,
+    wireguard: env.wireguard.available,
+    wireguardPath: env.wireguard.path,
+    capabilities: env.capabilities,
+    recommended: env.recommended,
     preflight: preflightResult,
     issues,
+    // Backward compat — keep nested .environment for existing consumers
+    environment: env,
   };
 }

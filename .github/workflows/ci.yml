@@ -1,0 +1,118 @@
+name: AI Connect Integrity Check
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Verify all imports resolve
+        run: |
+          node --input-type=module <<'SCRIPT'
+          import fs from 'fs';
+          import path from 'path';
+          const root = process.cwd();
+          let errors = 0, checked = 0;
+
+          function walk(dir) {
+            const files = [];
+            for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+              if (e.name === 'node_modules' || e.name === '.git') continue;
+              const p = path.join(dir, e.name);
+              if (e.isDirectory()) files.push(...walk(p));
+              else if (p.endsWith('.js') || p.endsWith('.mjs')) files.push(p);
+            }
+            return files;
+          }
+
+          for (const file of walk(root)) {
+            const lines = fs.readFileSync(file, 'utf8').split('\n');
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              if (line.trimStart().startsWith('*') || line.trimStart().startsWith('//')) continue;
+              const match = line.match(/from\s+['"](\.\.[^'"]+|\.\/[^'"]+)['"]/);
+              if (!match) continue;
+              checked++;
+              const resolved = path.resolve(path.dirname(file), match[1]);
+              if (!fs.existsSync(resolved)) {
+                console.error(`MISSING: ${path.relative(root, file)} -> ${match[1]}`);
+                errors++;
+              }
+            }
+          }
+          console.log(`Checked ${checked} relative imports`);
+          if (errors > 0) { console.error(`${errors} broken`); process.exit(1); }
+          else console.log('All imports resolve');
+          SCRIPT
+
+      - name: Verify index.js loads
+        run: |
+          node --input-type=module <<'SCRIPT'
+          try {
+            const m = await import('./index.js');
+            const count = Object.keys(m).length;
+            console.log(`index.js: ${count} exports`);
+            if (count < 10) { console.error('Expected 10+ exports'); process.exit(1); }
+          } catch (e) {
+            console.error('FAIL:', e.message);
+            process.exit(1);
+          }
+          SCRIPT
+
+      - name: Verify no secrets
+        run: |
+          node --input-type=module <<'SCRIPT'
+          import fs from 'fs';
+          import path from 'path';
+          const patterns = [
+            { name: 'Hardcoded wallet', regex: /sent1[a-z0-9]{38}/ },
+            { name: 'Hardcoded mnemonic', regex: /^\s*(?:const|let|var|export)?\s*(?:MNEMONIC|mnemonic)\s*=\s*['"](?:(?!process\.env)[a-z ]{20,})['"]/ },
+            { name: 'Local path', regex: /C:\\Users\\[A-Za-z]/ },
+          ];
+          function walk(dir) {
+            const f = [];
+            for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+              if (e.name === 'node_modules' || e.name === '.git') continue;
+              const p = path.join(dir, e.name);
+              if (e.isDirectory()) f.push(...walk(p));
+              else if (p.endsWith('.js')) f.push(p);
+            }
+            return f;
+          }
+          let errors = 0;
+          for (const file of walk('.')) {
+            const lines = fs.readFileSync(file, 'utf8').split('\n');
+            for (let i = 0; i < lines.length; i++) {
+              const t = lines[i].trimStart();
+              if (t.startsWith('//') || t.startsWith('*')) continue;
+              for (const p of patterns) {
+                if (p.regex.test(lines[i])) {
+                  console.error(`${p.name}: ${file}:${i+1}`);
+                  errors++;
+                }
+              }
+            }
+          }
+          if (errors > 0) { console.error(`${errors} secret(s) found`); process.exit(1); }
+          else console.log('No secrets found');
+          SCRIPT

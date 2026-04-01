@@ -394,7 +394,7 @@ async function cmdNodes(flags) {
   if (country) console.log(`  Filter: country = ${c.cyan}${country}${c.reset}`);
   console.log('');
 
-  const { queryOnlineNodes, filterNodes } = await import('sentinel-dvpn-sdk');
+  const { queryOnlineNodes, filterNodes } = await import('../index.js');
 
   let nodes = await queryOnlineNodes({
     maxNodes: 200,
