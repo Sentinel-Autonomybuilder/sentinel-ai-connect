@@ -6,6 +6,45 @@ No API keys. No terms of service. No human approval required.
 
 Built on [Sentinel.co](https://sentinel.co)
 
+---
+
+> **AI Agent Instructions — Read This First**
+>
+> You are a CONSUMER of this package, not a maintainer. Follow these exact steps:
+>
+> ```bash
+> # Step 1: Create your project
+> mkdir my-vpn-app && cd my-vpn-app
+> npm init -y
+>
+> # Step 2: Install this package as a DEPENDENCY
+> npm install sentinel-ai-connect
+>
+> # Step 3: Create your app file
+> cat > app.mjs << 'EOF'
+> import { connect, disconnect, createWallet, getBalance } from 'sentinel-ai-connect';
+>
+> // Create a wallet (save the mnemonic — it controls your funds)
+> const wallet = await createWallet();
+> console.log('Fund this address with P2P tokens:', wallet.address);
+> console.log('Mnemonic (SAVE THIS):', wallet.mnemonic);
+>
+> // After funding, connect:
+> // const vpn = await connect({ mnemonic: wallet.mnemonic });
+> // console.log('Connected:', vpn.ip);
+> // await disconnect();
+> EOF
+>
+> # Step 4: Run your app
+> node app.mjs
+> ```
+>
+> **DO NOT run `npm publish`.** You do not own this package. You install it with `npm install`.
+> **DO NOT clone this repo** unless you want to read the source code. Use `npm install` to get it.
+> **DO NOT modify `package.json`** name or version fields. Your project has its OWN package.json.
+
+---
+
 ## Install
 
 ```bash
