@@ -16,32 +16,15 @@
  *   help                           Show this message
  */
 
-import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// ─── ANSI Colors ────────────────────────────────────────────────────────────
+// ─── Shared colors/icons (also used for error display) ─────────────────────
 
-const c = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  cyan: '\x1b[36m',
-  white: '\x1b[37m',
-  bgBlue: '\x1b[44m',
-};
-
-const ok = `${c.green}+${c.reset}`;
-const warn = `${c.yellow}!${c.reset}`;
-const err = `${c.red}x${c.reset}`;
-const info = `${c.cyan}>${c.reset}`;
+import { c, ok, warn, err, info, banner } from './cli/shared.js';
 
 // ─── .env Loader ────────────────────────────────────────────────────────────
 
@@ -70,7 +53,6 @@ function loadEnv() {
 
 function parseArgs(argv) {
   const args = argv.slice(2);
-  const command = [];
   const flags = {};
   const positional = [];
 
@@ -91,15 +73,6 @@ function parseArgs(argv) {
   }
 
   return { positional, flags };
-}
-
-// ─── Banner ─────────────────────────────────────────────────────────────────
-
-function banner() {
-  console.log('');
-  console.log(`${c.bold}${c.cyan}  Sentinel AI Connect${c.reset}  ${c.dim}v0.1.0${c.reset}`);
-  console.log(`${c.dim}  Decentralized VPN for AI agents${c.reset}`);
-  console.log('');
 }
 
 // ─── Help ───────────────────────────────────────────────────────────────────
@@ -148,310 +121,6 @@ function showHelp() {
   console.log('');
 }
 
-// ─── Command: setup ─────────────────────────────────────────────────────────
-
-async function cmdSetup() {
-  banner();
-  console.log(`${info} Running environment checks...`);
-  console.log('');
-
-  // Delegate to setup.js which has all the detection logic
-  await import('./setup.js');
-}
-
-// ─── Command: wallet create ─────────────────────────────────────────────────
-
-async function cmdWalletCreate() {
-  banner();
-  console.log(`${info} Generating new wallet...`);
-  console.log('');
-
-  const { createWallet } = await import('./index.js');
-  const wallet = await createWallet();
-
-  // Write mnemonic directly to .env — never print it to stdout
-  const envPath = resolve(__dirname, '.env');
-  const mnemonicLine = `MNEMONIC=${wallet.mnemonic}`;
-  if (existsSync(envPath)) {
-    const content = readFileSync(envPath, 'utf-8');
-    if (content.includes('MNEMONIC=')) {
-      // Replace existing MNEMONIC line
-      const updated = content.replace(/^MNEMONIC=.*$/m, mnemonicLine);
-      writeFileSync(envPath, updated, 'utf-8');
-    } else {
-      appendFileSync(envPath, `\n${mnemonicLine}\n`, 'utf-8');
-    }
-  } else {
-    writeFileSync(envPath, `${mnemonicLine}\n`, 'utf-8');
-  }
-
-  console.log(`${ok} ${c.bold}Wallet created${c.reset}`);
-  console.log('');
-  console.log(`${c.bold}  Address:${c.reset}   ${c.green}${wallet.address}${c.reset}`);
-  console.log(`${ok} Mnemonic saved to .env (24 words). ${c.red}${c.bold}NEVER share this.${c.reset}`);
-  console.log('');
-  console.log(`${info} Next steps:`);
-  console.log(`  1. Fund the wallet with P2P tokens`);
-  console.log(`  2. Connect:  ${c.cyan}sentinel-ai connect${c.reset}`);
-  console.log('');
-}
-
-// ─── Command: wallet balance ────────────────────────────────────────────────
-
-async function cmdWalletBalance() {
-  banner();
-
-  const mnemonic = process.env.MNEMONIC;
-  delete process.env.MNEMONIC; // Don't keep mnemonic in environment after reading
-  if (!mnemonic) {
-    console.log(`${err} No MNEMONIC in .env file.`);
-    console.log(`  Run: ${c.cyan}sentinel-ai wallet create${c.reset}`);
-    console.log(`  Then add the mnemonic to your .env file.`);
-    process.exit(1);
-  }
-
-  console.log(`${info} Checking balance...`);
-
-  const { getBalance } = await import('./index.js');
-  const bal = await getBalance(mnemonic);
-
-  console.log('');
-  console.log(`${ok} ${c.bold}Wallet Balance${c.reset}`);
-  console.log(`  Address:  ${c.cyan}${bal.address}${c.reset}`);
-  console.log(`  Balance:  ${c.bold}${bal.p2p}${c.reset}  (${bal.udvpn.toLocaleString()} udvpn)`);
-  console.log(`  Status:   ${bal.funded ? `${c.green}Funded` : `${c.red}Insufficient`}${c.reset}`);
-  console.log('');
-
-  if (!bal.funded) {
-    console.log(`${warn} Wallet needs P2P tokens to pay for VPN sessions.`);
-    console.log(`  Send P2P tokens to: ${c.cyan}${bal.address}${c.reset}`);
-    console.log('');
-  }
-}
-
-// ─── Command: wallet import ─────────────────────────────────────────────────
-
-async function cmdWalletImport(words) {
-  banner();
-
-  if (!words || words.length === 0) {
-    console.log(`${err} Usage: sentinel-ai wallet import <word1 word2 word3 ...>`);
-    process.exit(1);
-  }
-
-  const mnemonic = words.join(' ');
-  console.log(`${info} Validating mnemonic (${words.length} words)...`);
-
-  const { importWallet } = await import('./index.js');
-  const result = await importWallet(mnemonic);
-
-  // Write mnemonic directly to .env — never print it to stdout
-  const envPath = resolve(__dirname, '.env');
-  const mnemonicLine = `MNEMONIC=${mnemonic}`;
-  if (existsSync(envPath)) {
-    const content = readFileSync(envPath, 'utf-8');
-    if (content.includes('MNEMONIC=')) {
-      const updated = content.replace(/^MNEMONIC=.*$/m, mnemonicLine);
-      writeFileSync(envPath, updated, 'utf-8');
-    } else {
-      appendFileSync(envPath, `\n${mnemonicLine}\n`, 'utf-8');
-    }
-  } else {
-    writeFileSync(envPath, `${mnemonicLine}\n`, 'utf-8');
-  }
-
-  console.log('');
-  console.log(`${ok} ${c.bold}Wallet imported${c.reset}`);
-  console.log(`  Address:  ${c.green}${result.address}${c.reset}`);
-  console.log(`${ok} Mnemonic saved to .env (${words.length} words). ${c.red}${c.bold}NEVER share this.${c.reset}`);
-  console.log('');
-  console.warn(`  ${c.yellow}WARNING: Your mnemonic was passed as command arguments.${c.reset}`);
-  console.warn(`  ${c.yellow}Clear your shell history: history -c (bash) or rm ~/.bash_history${c.reset}`);
-  console.log('');
-}
-
-// ─── Command: connect ───────────────────────────────────────────────────────
-
-async function cmdConnect(flags) {
-  banner();
-
-  const mnemonic = process.env.MNEMONIC;
-  delete process.env.MNEMONIC; // Don't keep mnemonic in environment after reading
-  if (!mnemonic) {
-    console.log(`${err} No MNEMONIC in .env file.`);
-    console.log(`  Run: ${c.cyan}sentinel-ai wallet create${c.reset}`);
-    process.exit(1);
-  }
-
-  const opts = {
-    mnemonic,
-    onProgress: (stage, detail) => {
-      const icon = stage === 'error' ? err : stage === 'done' ? ok : info;
-      console.log(`  ${icon} ${c.dim}[${stage}]${c.reset} ${detail}`);
-    },
-  };
-
-  if (flags.country) opts.country = flags.country;
-  if (flags.protocol) opts.protocol = flags.protocol;
-  if (flags.dns) opts.dns = flags.dns;
-  if (flags.node) opts.nodeAddress = flags.node;
-
-  console.log(`${info} Connecting to Sentinel dVPN...`);
-  if (flags.country) console.log(`  Country:  ${c.cyan}${flags.country}${c.reset}`);
-  if (flags.protocol) console.log(`  Protocol: ${c.cyan}${flags.protocol}${c.reset}`);
-  if (flags.dns) console.log(`  DNS:      ${c.cyan}${flags.dns}${c.reset}`);
-  if (flags.node) console.log(`  Node:     ${c.cyan}${flags.node}${c.reset}`);
-  console.log('');
-
-  const { connect, disconnect } = await import('./index.js');
-  const vpn = await connect(opts);
-
-  console.log('');
-  console.log(`${ok} ${c.bold}${c.green}Connected!${c.reset}`);
-  console.log(`  Session:  ${c.cyan}${vpn.sessionId}${c.reset}`);
-  console.log(`  Protocol: ${c.cyan}${vpn.protocol}${c.reset}`);
-  console.log(`  Node:     ${c.cyan}${vpn.nodeAddress}${c.reset}`);
-  if (vpn.ip) console.log(`  IP:       ${c.cyan}${vpn.ip}${c.reset}`);
-  if (vpn.socksPort) console.log(`  SOCKS5:   ${c.cyan}127.0.0.1:${vpn.socksPort}${c.reset}`);
-  console.log('');
-  console.log(`${c.dim}  Press Ctrl+C to disconnect${c.reset}`);
-  console.log('');
-
-  // Keep process alive, handle graceful shutdown
-  let disconnecting = false;
-
-  const cleanup = async () => {
-    if (disconnecting) return;
-    disconnecting = true;
-    console.log('');
-    console.log(`${info} Disconnecting...`);
-    try {
-      await disconnect();
-      console.log(`${ok} Disconnected.`);
-    } catch (e) {
-      console.log(`${warn} Disconnect error: ${e.message}`);
-    }
-    process.exit(0);
-  };
-
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
-
-  // Keep alive
-  await new Promise(() => {});
-}
-
-// ─── Command: disconnect ────────────────────────────────────────────────────
-
-async function cmdDisconnect() {
-  banner();
-  console.log(`${info} Disconnecting...`);
-
-  const { disconnect } = await import('./index.js');
-
-  try {
-    await disconnect();
-    console.log(`${ok} Disconnected from VPN.`);
-  } catch (e) {
-    console.log(`${warn} ${e.message}`);
-  }
-  console.log('');
-}
-
-// ─── Command: status ────────────────────────────────────────────────────────
-
-async function cmdStatus() {
-  banner();
-
-  const { status } = await import('./index.js');
-  const s = status();
-
-  if (!s.connected) {
-    console.log(`${c.dim}  Not connected${c.reset}`);
-    console.log('');
-    console.log(`  Run: ${c.cyan}sentinel-ai connect${c.reset}`);
-  } else {
-    console.log(`${ok} ${c.bold}${c.green}VPN Active${c.reset}`);
-    console.log(`  Session:  ${c.cyan}${s.sessionId}${c.reset}`);
-    console.log(`  Protocol: ${c.cyan}${s.protocol}${c.reset}`);
-    console.log(`  Node:     ${c.cyan}${s.nodeAddress}${c.reset}`);
-    console.log(`  Uptime:   ${c.cyan}${s.uptimeFormatted}${c.reset}`);
-    if (s.ip) console.log(`  IP:       ${c.cyan}${s.ip}${c.reset}`);
-    if (s.socksPort) console.log(`  SOCKS5:   ${c.cyan}127.0.0.1:${s.socksPort}${c.reset}`);
-  }
-  console.log('');
-}
-
-// ─── Command: nodes ─────────────────────────────────────────────────────────
-
-async function cmdNodes(flags) {
-  banner();
-
-  const limit = parseInt(flags.limit, 10) || 20;
-  const country = flags.country || null;
-
-  console.log(`${info} Fetching online nodes...`);
-  if (country) console.log(`  Filter: country = ${c.cyan}${country}${c.reset}`);
-  console.log('');
-
-  const { queryOnlineNodes, filterNodes } = await import('../index.js');
-
-  let nodes = await queryOnlineNodes({
-    maxNodes: 200,
-    onNodeProbed: ({ total, probed, online }) => {
-      process.stdout.write(`\r  ${c.dim}Probing: ${probed}/${total} checked, ${online} online${c.reset}`);
-    },
-  });
-  process.stdout.write('\r' + ' '.repeat(60) + '\r'); // Clear progress line
-
-  // Filter by country if requested
-  if (country) {
-    nodes = filterNodes(nodes, { country });
-  }
-
-  // Limit output
-  const display = nodes.slice(0, limit);
-
-  if (display.length === 0) {
-    console.log(`${warn} No nodes found${country ? ` in "${country}"` : ''}.`);
-    console.log('');
-    return;
-  }
-
-  console.log(`${ok} ${c.bold}${nodes.length} nodes found${c.reset}${nodes.length > limit ? ` (showing ${limit})` : ''}`);
-  console.log('');
-
-  // Table header
-  console.log(
-    `  ${c.bold}${pad('#', 4)}${pad('Address', 52)}${pad('Country', 16)}${pad('Type', 12)}${pad('Score', 8)}${pad('Peers', 6)}${c.reset}`,
-  );
-  console.log(`  ${c.dim}${'─'.repeat(96)}${c.reset}`);
-
-  for (let i = 0; i < display.length; i++) {
-    const n = display[i];
-    const addr = n.address || '?';
-    const short = addr.length > 48 ? addr.slice(0, 20) + '...' + addr.slice(-20) : addr;
-    const loc = n.country || n.city || '?';
-    const stype = n.serviceType || '?';
-    const score = n.qualityScore != null ? n.qualityScore.toFixed(1) : '-';
-    const peers = n.peers != null ? String(n.peers) : '-';
-
-    console.log(
-      `  ${c.dim}${pad(String(i + 1), 4)}${c.reset}${c.cyan}${pad(short, 52)}${c.reset}${pad(loc, 16)}${pad(stype, 12)}${c.green}${pad(score, 8)}${c.reset}${pad(peers, 6)}`,
-    );
-  }
-
-  console.log('');
-  console.log(`${info} Connect to a node: ${c.cyan}sentinel-ai connect --node <address>${c.reset}`);
-  console.log('');
-}
-
-/** Pad string to fixed width */
-function pad(str, width) {
-  if (str.length >= width) return str.slice(0, width);
-  return str + ' '.repeat(width - str.length);
-}
-
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -463,11 +132,14 @@ async function main() {
 
   try {
     switch (cmd) {
-      case 'setup':
+      case 'setup': {
+        const { cmdSetup } = await import('./cli/setup.js');
         await cmdSetup();
         break;
+      }
 
-      case 'wallet':
+      case 'wallet': {
+        const { cmdWalletCreate, cmdWalletBalance, cmdWalletImport } = await import('./cli/wallet.js');
         switch (sub) {
           case 'create':
             await cmdWalletCreate();
@@ -484,22 +156,31 @@ async function main() {
             process.exit(1);
         }
         break;
+      }
 
-      case 'connect':
+      case 'connect': {
+        const { cmdConnect } = await import('./cli/connect.js');
         await cmdConnect(flags);
         break;
+      }
 
-      case 'disconnect':
+      case 'disconnect': {
+        const { cmdDisconnect } = await import('./cli/connect.js');
         await cmdDisconnect();
         break;
+      }
 
-      case 'status':
+      case 'status': {
+        const { cmdStatus } = await import('./cli/connect.js');
         await cmdStatus();
         break;
+      }
 
-      case 'nodes':
+      case 'nodes': {
+        const { cmdNodes } = await import('./cli/nodes.js');
         await cmdNodes(flags);
         break;
+      }
 
       case 'help':
       case '--help':

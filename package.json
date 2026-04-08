@@ -1,45 +1,54 @@
 {
   "name": "sentinel-ai-connect",
-  "version": "1.1.3",
-  "description": "Zero-config decentralized VPN for AI agents. One function call from zero to encrypted P2P tunnel. No API keys, no accounts, no servers.",
+  "version": "1.2.0",
+  "description": "Zero-config decentralized VPN for AI agents. One function call to private internet access through Sentinel's P2P network — no accounts, no servers, no dependencies on centralized infrastructure.",
   "type": "module",
   "main": "index.js",
-  "exports": {
-    ".": "./index.js"
-  },
+  "types": "index.d.ts",
   "bin": {
     "sentinel-ai": "./cli.js"
+  },
+  "files": [
+    "*.js",
+    "*.mjs",
+    "*.d.ts",
+    "*.vbs",
+    "*.md",
+    "cli/",
+    "examples/",
+    ".env.example",
+    "LICENSE"
+  ],
+  "scripts": {
+    "setup": "node setup.js",
+    "postinstall": "node setup.js || echo '[sentinel-ai] Setup incomplete — run npm run setup'",
+    "connect": "node cli.js connect",
+    "test": "node -e \"import('./index.js').then(m => console.log('OK:', Object.keys(m).length, 'exports'))\""
+  },
+  "keywords": [
+    "sentinel", "vpn", "decentralized", "p2p", "ai", "agent",
+    "privacy", "wireguard", "v2ray", "autonomous", "blockchain",
+    "cosmos", "dvpn", "tunnel", "socks5", "uncensorable"
+  ],
+  "license": "MIT",
+  "author": "Sentinel SDK Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sentinel-official/sentinel-ai-connect"
   },
   "engines": {
     "node": ">=20.0.0"
   },
-  "files": [
-    "*.js",
-    "examples/",
-    "*.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "test": "node -e \"import('./index.js').then(m => console.log('OK:', Object.keys(m).length, 'exports'))\"",
-    "postinstall": "node -e \"import('sentinel-dvpn-sdk/bin/setup.js').catch(()=>{})\" || true"
-  },
-  "keywords": [
-    "ai", "vpn", "dvpn", "sentinel", "agent", "decentralized", "wireguard",
-    "v2ray", "socks5", "privacy", "autonomous", "p2p", "split-tunnel",
-    "bandwidth", "censorship-resistant", "peer-to-peer"
-  ],
-  "license": "MIT",
   "dependencies": {
-    "sentinel-dvpn-sdk": "^1.2.4",
     "axios": "^1.7.0",
     "socks-proxy-agent": "^8.0.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect.git"
+  "peerDependencies": {
+    "sentinel-dvpn-sdk": "^1.0.0"
   },
-  "bugs": {
-    "url": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/issues"
-  },
-  "homepage": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect#readme"
+  "peerDependenciesMeta": {
+    "sentinel-dvpn-sdk": {
+      "optional": true
+    }
+  }
 }
