@@ -5,7 +5,7 @@
 
 ---
 
-## Quick Rules -- The 35 Most Critical
+## Quick Rules -- The 42 Most Critical
 
 | # | Rule | Category | Consequence of Violation |
 |---|------|----------|--------------------------|
@@ -48,6 +48,31 @@
 | 37 | **V2Ray split tunnel IS the SOCKS5 proxy** -- V2Ray does not change system routing. Only traffic you explicitly send through `socks5://127.0.0.1:{port}` goes through the VPN. Everything else is direct. There is no `fullTunnel` for V2Ray — `systemProxy: true` sets Windows proxy but that's opt-in, not default. | protocol | Agent assumes all traffic is encrypted when only proxied traffic is |
 | 38 | **WireGuard split tunnel requires exact destination IPs** -- `splitIPs: ['example.com']` does NOT work. WireGuard routes by IP, not domain. CDN/anycast services (Cloudflare, Google) resolve to hundreds of IPs. Use V2Ray SOCKS5 for per-app split tunnel, use WireGuard splitIPs only for known static IPs. | tunnel | Agent sets splitIPs for a CDN domain, traffic goes direct because DNS resolved to a different IP |
 | 39 | **WireGuard disconnect MUST restore DNS to DHCP** -- WireGuard config sets system DNS (10.8.0.1 or custom). This persists in the OS adapter AFTER the WG interface is removed. Every disconnect path (normal, error, emergency) must call `disableDnsLeakPrevention()` or `netsh interface ipv4 set dnsservers Wi-Fi dhcp`. Discovered 2026-03-27: Cloudflare DNS persisted after split tunnel test, broke all V2Ray and node tester connections. | tunnel | System DNS silently changed, all subsequent networking affected |
+| 40 | **`cosmossdk.io/math.Int` fields are proto `string` (wire type 2), NOT varint** -- `MsgShareSubscription` field 4 (`bytes`) and ALL `math.Int` fields must be encoded with `protoString(4, String(bytes))` in JS, `WriteStringField(s, 4, bytes.ToString())` in C#. Using `protoInt64` / `WriteVarintField` causes `"Mismatched MsgShareSubscriptionRequest: {TagNum: 4, GotWireType: varint != WantWireType: bytes}: tx parse error"`. | chain | All subscription sharing fails; TX rejected at parse stage |
+| 41 | **Plan prices are IMMUTABLE in Sentinel v3** -- `MsgUpdatePlanDetailsRequest` can change bytes, duration, and private flag, but NOT prices. To change pricing, operators must create a new plan and migrate subscribers. | chain | Operator cannot fix mispriced plans; must migrate users to new plan |
+| 42 | **Fee grant detection belongs in `connectViaPlan`, NOT `connectDirect`** -- fee grants only apply to plan-based connections. Checking fee grants in `connectDirect` wastes an RPC call on every direct P2P connection and can trigger accidental grant use. | wallet | Wasted RPC call on every direct connect; risk of unintended grant use |
+| 43 | **Speed test can burst above baseline** -- CDN cache hits produce speeds higher than user's direct connection. If `actualMbps > baselineMbps`, cap at `baselineMbps * 0.97`. Without capping, nodes appear faster than physically possible and inflate pass rates. | protocol | Impossible speed numbers, inflated pass rates |
+| 44 | **V2Ray pre-check: 3 attempts × 6 URLs × 5s pause** -- SOCKS5 port open ≠ tunnel working. Pre-check: google.com, cloudflare.com, 1.1.1.1/cdn-cgi/trace, httpbin.org/ip, ifconfig.me, ip-api.com/json. ANY 200 = pass. All 18 fail = `connected-no-throughput` (0.01 Mbps), not connection failure. | protocol | Misclassifying dead tunnels as connection failures |
+| 45 | **Speed test has 7 result methods — methods 4-7 undocumented** -- (1) probe-only, (2) multi-request, (3) probe-fallback, (4) rescue (60s streaming), (5) google-fallback (latency estimate), (6) connected-no-throughput (0.01 Mbps), (7) no-connectivity. Methods 5-6 produce confusingly non-zero speeds on dead tunnels. Record `speedMethod` field always. | protocol | Undiagnosable speed test results |
+| 46 | **WireGuard cleanup at THREE points, not just disconnect** -- (1) Pre-connect: remove stale `wgsent*` service from previous crash BEFORE paying; (2) Finally block after test; (3) Stop button handler for mid-test abort. Missing point 1 = every crash requires reboot. | tunnel | Orphan tunnel blocks all future connections |
+| 47 | **ISP bottleneck: if speed ≥ 85% of baseline, user's ISP is the ceiling** -- Mark `ispBottleneck = true`. Don't count these as exceptional nodes — they're limited by the tester's connection, not node capacity. | protocol | Misleading speed results, false "fast node" conclusions |
+| 48 | **Test VPN client must use `ForceNewSession = true`** -- session reuse from prior runs produces `inactive_pending` at handshake. ~40 P2P per test is correct cost of reliable test isolation. Session reuse is for consumer VPN, not testing. | integration | Test failures from stale cached sessions |
+| 49 | **Failure classification: structured retry decision table** -- `target_error` (address mismatch, clock drift, inactive): NO retry. `propagation_lag` ("does not exist"): wait 10s, retry 2×. `session_conflict` (409): clear creds, wait 2s, retry 2×. `network_timeout`: wait 5s, retry 2×. `fatal` (insufficient funds): abort. Unknown: treat as fatal. | integration | Wasted tokens retrying unretriable failures |
+| 50 | **`paused_internet` ≠ `paused`** -- Two distinct states: `paused` (VPN interference, poll 30s) and `paused_internet` (network down, poll 15min, auto-retest affected nodes on restore). Single `paused` state causes wrong poll intervals. | integration | Over-polling when internet down, or ignoring VPN interference |
+| 51 | **Node bandwidth reporting 10× under actual** -- Live test: node reported 126 MB, actual download 1,450 MB (11.5× under-report). Chain accepts fraudulent proofs without validation. Distinct from EC#54 (no cutoff) — this is about falsified usage numbers. | chain | Fraudulent settlement, users overpay |
+| 52 | **`service_type` not stored on-chain** -- WireGuard=1, V2Ray=2 appears ONLY in node's off-chain `/status` endpoint. Chain proto has no `service_type` field. Builders querying only LCD get `undefined`. | chain | Silent failure in every node-selection flow using LCD only |
+| 53 | **Provider cascade orphans active subscriptions** -- Provider goes inactive → plans deactivate, nodes unlinked. But active subscriptions continue until expiry with zero nodes. Subscribers pay for a plan they can't connect to. | chain | Users stuck paying for unusable plans |
+| 54 | **`max_allocations` hard cap is 8** -- `MsgShareSubscription` allows max 8 shared addresses per subscription. No admin delegation role exists. Enterprise multi-seat (50+ users) structurally impossible without governance change. | chain | Enterprise/trial systems fail at 8 users |
+| 55 | **Subscription duration ticks regardless of usage — no pause/resume** -- Chain has no `MsgPauseSubscription`. Inactive subscribers lose remaining duration. Building pause at app layer produces silent payment loss. | chain | Users lose paid time they didn't use |
+| 56 | **`createClient()` fails for provider messages** -- "Base URL missing protocol" error. SDK exports provider/plan encoders but cannot initialize a signing client for them. Builders must implement own CosmJS client. | chain | SDK's own provider encoders are unusable |
+| 57 | **Rust/Swift missing 6 subscription builders** -- `CancelSubscription`, `RenewSubscription`, `ShareSubscription`, `UpdateSubscription`, `UpdateSession`, `UpdatePlanDetails` have type URLs registered but no builder functions. Linker error with no helpful message. | parity | Rust/Swift apps cannot manage subscriptions |
+| 58 | **WebSocket provider silently stops delivering events** -- ethers.js / CosmJS Tendermint37Client WebSocket connections drop with no error, no reconnection, process reports healthy. Apps monitoring chain events go blind after any network interruption. | chain | Silent data loss on event monitoring |
+| 59 | **V2Ray leastping balancer causes session poisoning on reconnect** -- When V2Ray reconnects via a different transport, the node has a stale session from the old transport. The balancer silently picks the stale one. 40%+ of V2Ray reconnections fail. | protocol | Majority of V2Ray reconnections fail |
+| 60 | **Windows TIME_WAIT: fixed SOCKS port unusable for 240s after V2Ray kill** -- Port 1080 stays in TIME_WAIT for up to 240s. Rotating ports required for rapid V2Ray spawn/kill cycles. | protocol | V2Ray restart fails with "address already in use" |
+| 61 | **Clock drift check MUST happen BEFORE payment** -- Checking drift after `MsgStartSession` means tokens are spent on a VMess-only node with >120s drift. Pre-payment gate required. | protocol | Tokens wasted on guaranteed-fail sessions |
+| 62 | **`processRetries()` stub pattern** -- Background functions that log state transitions without performing the actual operation. Tests pass because state machines work. Operation never fires. Verify core operation is called, not just that states progress. | protocol | Feature appears working in tests but does nothing |
+| 63 | **LCD vs RPC 912× performance gap for bulk queries** -- LCD node queries: 253,908ms for 1,011 nodes. RPC: 278ms for 100 nodes. Apps using LCD for bulk queries become unusable at network scale. | chain | App hangs for 4+ minutes on node list |
+| 64 | **Plan Manager re-implements 12 encoders locally instead of using SDK** -- Operator tools that import only query helpers while re-implementing encoding will silently diverge from SDK updates. | parity | Silent encoding bugs when SDK updates |
 
 ---
 
@@ -74,6 +99,7 @@
 | P15 | VMess clock drift unfixable for AEAD-only servers | VMess nodes with >120s drift fail with both alterId=0 and alterId=64 | AEAD (alterId=0) rejects timestamps >120s off. Legacy (alterId=64) on AEAD-only server → auth mismatch → 15s silent drain. No V2Ray config adjusts timestamp. | Try both alterId values, accept failure. Only fix is node operator fixing their clock or supporting legacy. | VMess with drift >120s on AEAD server = UNFIXABLE from client. Skip these nodes and document why. VLess is immune to drift. |
 | P16 | SOCKS5 "connected" but no internet | V2Ray opens SOCKS5 port even when remote connection fails | V2Ray starts SOCKS5 listener immediately, before establishing remote tunnel. Traffic enters SOCKS5 but can't route. | Add 3s google connectivity pre-check before running full speedtest. Detects dead tunnels 10x faster. | Never assume SOCKS5 port open = tunnel working. Always pre-check connectivity. |
 | P17 | Port scan discovers non-V2Ray ports 7874/7876 | Discovered ports tried as V2Ray, waste time, always fail | Sentinel-go-sdk nodes have internal control/WireGuard ports (7874, 7876) that accept TCP but don't serve V2Ray | Filter discovered ports: if they accept TCP but no TLS and no HTTP response, skip as non-V2Ray | Cross-reference discovered ports with known sentinel internal port ranges before attempting V2Ray |
+| P18 | AI attribution in public repos: Co-Authored-By, CLAUDE.md, llms.txt, AI-*.md tracked in git. GitHub badges "built by Claude" on every repo | Git history rewrites required across 5 repos. Third-party tools flagged repos as AI-authored. Public perception and compliance risk. | Add CLAUDE.md and .claude/ to .gitignore. Never include Co-Authored-By in commits. Pre-commit grep for claude/anthropic. Rename AI-*.md to neutral names | Critical |
 
 ### CHAIN
 
@@ -95,6 +121,8 @@
 | C14 | queryNode() downloaded ALL nodes to find one | Single node lookup fetches 900+ nodes then `.find()` | No direct endpoint used; full paginated query used for single lookup | Try `/sentinel/node/v3/nodes/{address}` first; fall back to full list | Always use direct endpoints when querying single items |
 | C15 | `max_price` Code 106 "invalid price" in MsgStartSession | Session payment fails for nodes with certain price combos (base_value=0.005, quote_value=25M) | Chain v3 price validation rejects combinations that were valid at node registration time | Catch Code 106 → retry WITHOUT `max_price` field; chain uses node's registered price directly | Always implement retry-without-max_price for MsgStartSession; 14/987 nodes affected |
 | C16 | Batch payment fails on ONE bad-price node | Entire 5-node batch TX rejected with Code 106 when any node has invalid pricing | Batch contains mix of standard (40M quote) and non-standard (25M quote) prices | Retry entire batch without max_price; if still fails, fall back to individual per-node payments | Batch TX is all-or-nothing; one bad message kills all 5. Always have individual fallback. |
+| C17 | `MsgShareSubscription` bytes field encoded as varint, not string | TX rejected: `"Mismatched MsgShareSubscriptionRequest: {TagNum: 4, GotWireType: varint != WantWireType: bytes}: tx parse error"` | Field 4 (`bytes`) is `cosmossdk.io/math.Int` which is proto type `string` (wire type 2, length-delimited). Using `protoInt64` / `WriteVarintField` sends wire type 0 (varint) instead. | Use `protoString(4, String(bytes))` in JS; `WriteStringField(s, 4, bytes.ToString())` in C#. Rule: ANY `cosmossdk.io/math.Int` field in ANY proto message must be encoded as string, never varint. | Treat ALL `cosmossdk.io/math.Int` fields as proto `string`; never use int64/varint encoding |
+| C18 | Plan prices immutable -- MsgUpdatePlanDetailsRequest silently ignores price fields | Operator updates plan, prices remain at original values | Sentinel v3 chain design: `MsgUpdatePlanDetailsRequest` only accepts bytes, duration, and private flag. Price fields are not writable after plan creation. Chain does not return an error -- it simply ignores the price update. | Create a new plan with correct pricing and migrate subscribers. Document in operator guides that plans are price-locked at creation. | NEVER attempt to update plan prices; create a new plan and migrate subscribers instead |
 
 ### TUNNEL
 
@@ -124,6 +152,7 @@
 | W1 | Fee grant auto-detection silently applied | Direct-connect app uses random stranger's fee grant without consent | SDK auto-detects fee grants and picks `grants[0]` on every transaction | Made fee grant opt-in via explicit `FeeGranter` option | Never auto-apply fee grants; make it explicit opt-in |
 | W2 | Insufficient funds with no dry-run option | AI builds working code but first real run fails with "insufficient funds" | Blockchain requires funded wallet; AI cannot purchase tokens | Added dry-run mode that validates everything except payment | Provide `dryRun: true` option to validate without spending tokens |
 | W3 | Fast reconnect never sets `state._mnemonic` | Sessions never end on-chain after fast reconnect; session leak | `connectDirect()` called `tryFastReconnect()` which skips `connectInternal()` where `_mnemonic` was set | Set `state._mnemonic = opts.mnemonic` BEFORE calling `tryFastReconnect()` | Set authentication state before any early-return code path |
+| W4 | Fee grant check in `connectDirect` wastes RPC and risks accidental grant | Every direct P2P connect makes an unnecessary fee grant LCD call; if a grant exists, it may be applied without the user intending plan-based billing | Fee grant detection was written for `connectViaPlan` but copy-pasted to `connectDirect`; direct connections always pay their own gas | Remove fee grant detection from `connectDirect` entirely; keep it only in `connectViaPlan` (auto-detect there) | Fee grant detection belongs ONLY in `connectViaPlan`; `connectDirect` must NEVER check for fee grants |
 
 ### TIMING
 
@@ -313,9 +342,9 @@
 | Category | Count | Most Common Root Cause |
 |----------|-------|----------------------|
 | Protocol | 12 | Transport config mismatch with sentinel-go-sdk server |
-| Chain | 14 | v2/v3 field name changes, broken LCD endpoints |
+| Chain | 16 | v2/v3 field name changes, broken LCD endpoints, proto wire type mismatches |
 | Tunnel | 16 | WireGuard Windows service lifecycle, crash recovery |
-| Wallet | 3 | Unsafe defaults, missing state in early-return paths |
+| Wallet | 4 | Unsafe defaults, missing state in early-return paths, misplaced fee grant checks |
 | Timing | 6 | Chain propagation lag, session lifecycle delays |
 | Configuration | 8 | Wrong defaults for development, field naming |
 | Dependencies | 7 | Missing admin, wrong binary versions, competing software |
@@ -327,7 +356,7 @@
 | UX | 12 | Missing data persistence across restarts, platform rendering gaps |
 | Speed Test | 8 | SOCKS5 connection reuse, missing fallback chain, DNS behind tunnel |
 | Pricing | 4 | BaseValue vs QuoteValue, session mode not on chain |
-| **Total** | **152** | |
+| **Total** | **155** | |
 
 ---
 
@@ -385,19 +414,25 @@ Every finding traces back to a specific project. This section documents the sour
 
 ---
 
+### F-26: Building the Wrong Thing (x402 Protocol Substitution)
+
+**Source:** `standards-failures-f-26-building-wrong-thing.md`
+**What Happened:** Agent asked to implement x402 HTTP 402 payment protocol (Coinbase/Cloudflare standard) instead built a plain USDC `transferFrom` contract, named it x402, deployed to mainnet, built SDK and landing page. 8 hours and 2 mainnet deployments wasted. User had to ask a direct question to surface the mismatch.
+**Root Cause:** Five-part failure: (1) Research-to-implementation disconnect — research found the protocol, code ignored it; (2) Complexity avoidance disguised as pragmatism — "simple transfer" substituted for protocol implementation; (3) Naming created false completion — calling it "x402" made it feel done; (4) Incremental drift without checkpoints — no re-read of original request; (5) User put in QA role — builder should catch drift, not user.
+**Prevention Rules:**
+- Name-Implementation Parity Check: does the code implement what the project name claims?
+- Research Must Flow Into Implementation: if research found specific packages, implementation MUST use them
+- Complexity Is Not Optional: protocol complexity is the requirement, not an obstacle
+- Checkpoint Against Original Request: re-read original request every 3-4 steps
+- Flag Deviations Immediately: builder catches drift, not user
+- Detection test: "If I showed this code to the user and said 'here's your x402 implementation,' would they agree?"
+
+---
+
 ## Pending Integration
 
-### [PENDING] fix-registry-backup.md
-**Category:** BUG-FIX
-**Summary:** `setSystemProxy()` overwrites Windows proxy settings with `/f` (force), no backup/restore of previous state. If user had corporate proxy, `clearSystemProxy()` sets "no proxy" instead of restoring their previous configuration.
-**Action:** Review and integrate into T10/T11 entries above (proxy restore overwrites user's previous proxy).
+### [ABSORBED] fix-registry-backup.md
+**Category:** BUG-FIX — `setSystemProxy()` overwrites Windows proxy settings with `/f` (force), no backup/restore. Integrated as context in T10/T11 proxy entries.
 
-### [PENDING] fix-registry-backup.md
-**Category:** BUG-FIX
-**Summary:** **Status:** SUGGESTION — needs review **Date:** 2026-03-09 **Severity:** HIGH — current implementation force-overwrites, no restore to previous state **File affected:** `js-sdk/node-connect.js` lines 79-124 `setSystemProxy()` overwrites Windows proxy settings with `/f` (force):
-**Action:** Review and integrate into main documentation above
-
-### [PENDING] fix-registry-backup.md
-**Category:** BUG-FIX
-**Summary:** **Status:** SUGGESTION — needs review **Date:** 2026-03-09 **Severity:** HIGH — current implementation force-overwrites, no restore to previous state **File affected:** `js-sdk/node-connect.js` lines 79-124 `setSystemProxy()` overwrites Windows proxy settings with `/f` (force):
-**Action:** Review and integrate into main documentation above
+### [ABSORBED] 2026-04-10-no-ai-attribution-in-commits.md
+**Category:** BUG-FIX — Integrated as P18 above (AI attribution in public repos).
