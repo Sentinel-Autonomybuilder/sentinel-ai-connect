@@ -14,7 +14,7 @@
  */
 
 import 'dotenv/config';
-import { connect, disconnect, isVpnActive } from '../index.js';
+import { connect, disconnect, isVpnActive } from 'blue-agent-connect';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -83,7 +83,7 @@ async function doWork(region) {
 async function main() {
   const mnemonic = process.env.MNEMONIC;
   if (!mnemonic) {
-    log('err', 'No MNEMONIC in .env file. Run: sentinel-ai wallet create');
+    log('err', 'No MNEMONIC in .env file. Run: blue-agent-connect wallet create');
     process.exit(1);
   }
 

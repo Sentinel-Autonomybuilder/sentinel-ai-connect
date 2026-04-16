@@ -1,45 +1,57 @@
 {
-  "name": "sentinel-ai-connect",
-  "version": "1.1.3",
+  "name": "blue-agent-connect",
+  "version": "2.0.0",
   "description": "Zero-config decentralized VPN for AI agents. One function call from zero to encrypted P2P tunnel. No API keys, no accounts, no servers.",
   "type": "module",
   "main": "index.js",
+  "types": "index.d.ts",
   "exports": {
-    ".": "./index.js"
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
   },
   "bin": {
-    "sentinel-ai": "./cli.js"
+    "blue-agent-connect": "./cli.js"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "files": [
     "*.js",
-    "examples/",
+    "*.mjs",
+    "*.d.ts",
+    "*.vbs",
     "*.md",
+    "cli/",
+    "examples/",
+    ".env.example",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node -e \"import('./index.js').then(m => console.log('OK:', Object.keys(m).length, 'exports'))\"",
-    "postinstall": "node -e \"import('sentinel-dvpn-sdk/bin/setup.js').catch(()=>{})\" || true"
+    "setup": "node setup.js",
+    "postinstall": "node setup.js || echo '[blue-agent-connect] Setup incomplete — run npm run setup'",
+    "connect": "node cli.js connect",
+    "test": "node -e \"import('./index.js').then(m => console.log('OK:', Object.keys(m).length, 'exports'))\""
   },
   "keywords": [
-    "ai", "vpn", "dvpn", "sentinel", "agent", "decentralized", "wireguard",
+    "agent", "vpn", "dvpn", "sentinel", "ai", "decentralized", "wireguard",
     "v2ray", "socks5", "privacy", "autonomous", "p2p", "split-tunnel",
-    "bandwidth", "censorship-resistant", "peer-to-peer"
+    "bandwidth", "censorship-resistant", "peer-to-peer", "x402"
   ],
   "license": "MIT",
-  "dependencies": {
-    "sentinel-dvpn-sdk": "^1.2.4",
-    "axios": "^1.7.0",
-    "socks-proxy-agent": "^8.0.0"
-  },
+  "author": "Norse Labs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect.git"
+    "url": "https://github.com/Sentinel-Autonomybuilder/blue-agent-connect.git"
   },
   "bugs": {
-    "url": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/issues"
+    "url": "https://github.com/Sentinel-Autonomybuilder/blue-agent-connect/issues"
   },
-  "homepage": "https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect#readme"
+  "homepage": "https://github.com/Sentinel-Autonomybuilder/blue-agent-connect#readme",
+  "dependencies": {
+    "blue-js-sdk": "^2.3.0",
+    "axios": "^1.7.0",
+    "socks-proxy-agent": "^8.0.0"
+  }
 }

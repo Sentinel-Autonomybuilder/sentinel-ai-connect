@@ -7,13 +7,13 @@
  * Prerequisites:
  *   1. .env file with MNEMONIC=<your 24-word phrase>
  *   2. Funded wallet (P2P tokens)
- *   3. V2Ray or WireGuard installed (run: sentinel-ai setup)
+ *   3. V2Ray or WireGuard installed (run: blue-agent-connect setup)
  *
  * Run: node examples/one-shot.mjs
  */
 
 import 'dotenv/config';
-import { connect, disconnect } from '../index.js';
+import { connect, disconnect } from 'blue-agent-connect';
 
 const vpn = await connect({
   mnemonic: process.env.MNEMONIC,

@@ -1,5 +1,5 @@
 /**
- * Sentinel AI Path — Decentralized VPN for AI Agents
+ * Agent Connect — Decentralized VPN for AI Agents
  *
  * Complete agent flow:
  *
@@ -9,7 +9,7 @@
  *   4. Discover: await discoverNodes()   → [{ address, country, protocol, price, score }]
  *   5. Estimate: await estimateCost(opts) → { perGb, perHour, forBudget }
  *   6. Connect:  await connect(opts)     → { sessionId, protocol, ip, socksPort }
- *   7. Verify:   await verify()          → { connected, ip, latency }
+ *   7. Verify:   await verify()          → { connected, ip, verified, latency }
  *   8. Monitor:  onEvent(callback)       → unsubscribe function
  *   9. Disconnect: await disconnect()    → { disconnected: true }
  */

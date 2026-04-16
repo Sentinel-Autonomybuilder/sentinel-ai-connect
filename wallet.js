@@ -1,5 +1,5 @@
 /**
- * Sentinel AI Path — Wallet Management
+ * Agent Connect — Wallet Management
  *
  * Simple wallet operations for AI agents:
  *   createWallet()           -> { mnemonic, address }
@@ -18,13 +18,13 @@ import {
   DEFAULT_RPC,
   tryWithFallback,
   RPC_ENDPOINTS,
-} from 'sentinel-dvpn-sdk';
+} from 'blue-js-sdk';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 /** Minimum balance (in udvpn) to consider a wallet "funded" for VPN sessions.
- *  Matches connect.js MIN_BALANCE_UDVPN — cheapest node (~4 P2P) + gas. */
-const FUNDED_THRESHOLD = 5_000_000; // 5.0 P2P
+ *  1 P2P covers gas (~0.04 P2P) + cheapest node (~0.68 P2P/GB) with margin. */
+const FUNDED_THRESHOLD = 1000000; // 1.0 P2P
 
 // ─── createWallet() ──────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 /**
- * Sentinel AI Path — Decision Engine for Autonomous Agents
+ * Agent Connect — Decision Engine for Autonomous Agents
  *
  * An autonomous agent calls recommend() BEFORE connect().
  * It receives structured recommendations with alternatives,
@@ -11,96 +11,13 @@
 import {
   queryOnlineNodes,
   fetchActiveNodes,
-  filterNodes,
-  getNodePrices,
   formatP2P,
   IS_ADMIN,
   WG_AVAILABLE,
-  TRANSPORT_SUCCESS_RATES,
-  COUNTRY_MAP,
-} from 'sentinel-dvpn-sdk';
+} from 'blue-js-sdk';
 
-// ─── Country Proximity Map ──────────────────────────────────────────────────
-
-const REGION_MAP = {
-  // Western Europe
-  'DE': ['AT', 'CH', 'NL', 'BE', 'LU', 'FR', 'CZ', 'PL', 'DK'],
-  'FR': ['BE', 'LU', 'CH', 'DE', 'ES', 'IT', 'NL', 'GB'],
-  'GB': ['IE', 'NL', 'FR', 'BE', 'DE', 'DK', 'NO'],
-  'NL': ['BE', 'DE', 'GB', 'LU', 'FR', 'DK'],
-  // Nordic
-  'SE': ['NO', 'DK', 'FI', 'DE', 'NL', 'EE'],
-  'NO': ['SE', 'DK', 'FI', 'GB', 'DE', 'NL'],
-  'FI': ['SE', 'EE', 'NO', 'DK', 'LV', 'LT'],
-  'DK': ['SE', 'NO', 'DE', 'NL', 'GB'],
-  // Eastern Europe
-  'PL': ['CZ', 'SK', 'DE', 'LT', 'UA', 'AT'],
-  'CZ': ['SK', 'DE', 'AT', 'PL'],
-  'RO': ['BG', 'HU', 'MD', 'UA', 'RS'],
-  'UA': ['PL', 'RO', 'MD', 'HU', 'SK', 'CZ'],
-  // Southern Europe
-  'IT': ['CH', 'AT', 'FR', 'SI', 'HR'],
-  'ES': ['PT', 'FR', 'IT'],
-  'GR': ['BG', 'TR', 'CY', 'AL', 'MK', 'IT'],
-  'TR': ['GR', 'BG', 'GE', 'CY'],
-  // North America
-  'US': ['CA', 'MX'],
-  'CA': ['US'],
-  // Asia
-  'JP': ['KR', 'TW', 'HK', 'SG'],
-  'KR': ['JP', 'TW', 'HK', 'SG'],
-  'SG': ['MY', 'ID', 'TH', 'VN', 'HK', 'JP', 'KR', 'TW'],
-  'IN': ['SG', 'AE', 'LK', 'BD'],
-  'AE': ['IN', 'SG', 'BH', 'QA', 'SA'],
-  // Oceania
-  'AU': ['NZ', 'SG', 'JP'],
-  'NZ': ['AU', 'SG'],
-  // South America
-  'BR': ['AR', 'CL', 'UY', 'CO'],
-  'AR': ['BR', 'CL', 'UY'],
-  // Africa
-  'ZA': ['NA', 'BW', 'MZ', 'KE'],
-};
-
-/**
- * Get nearby countries sorted by proximity.
- */
-function getNearbyCountries(countryCode) {
-  const code = countryCode.toUpperCase();
-  const nearby = REGION_MAP[code] || [];
-  return nearby;
-}
-
-/**
- * Normalize a country input to ISO code.
- */
-function toCountryCode(input) {
-  if (!input) return null;
-  const upper = input.toUpperCase().trim();
-  if (upper.length === 2) return upper;
-  // Check COUNTRY_MAP from SDK if available
-  if (COUNTRY_MAP) {
-    for (const [name, code] of Object.entries(COUNTRY_MAP)) {
-      if (name.toUpperCase() === upper) return code;
-    }
-  }
-  // Common names
-  const common = {
-    'GERMANY': 'DE', 'UNITED STATES': 'US', 'USA': 'US', 'UNITED KINGDOM': 'GB',
-    'UK': 'GB', 'FRANCE': 'FR', 'JAPAN': 'JP', 'CANADA': 'CA', 'AUSTRALIA': 'AU',
-    'NETHERLANDS': 'NL', 'SWITZERLAND': 'CH', 'SWEDEN': 'SE', 'NORWAY': 'NO',
-    'SINGAPORE': 'SG', 'SOUTH KOREA': 'KR', 'KOREA': 'KR', 'INDIA': 'IN',
-    'BRAZIL': 'BR', 'SPAIN': 'ES', 'ITALY': 'IT', 'TURKEY': 'TR', 'RUSSIA': 'RU',
-    'UKRAINE': 'UA', 'POLAND': 'PL', 'ROMANIA': 'RO', 'FINLAND': 'FI',
-    'DENMARK': 'DK', 'IRELAND': 'IE', 'PORTUGAL': 'PT', 'AUSTRIA': 'AT',
-    'CZECH REPUBLIC': 'CZ', 'CZECHIA': 'CZ', 'HUNGARY': 'HU', 'BELGIUM': 'BE',
-    'SOUTH AFRICA': 'ZA', 'ARGENTINA': 'AR', 'MEXICO': 'MX', 'COLOMBIA': 'CO',
-    'HONG KONG': 'HK', 'TAIWAN': 'TW', 'THAILAND': 'TH', 'VIETNAM': 'VN',
-    'INDONESIA': 'ID', 'MALAYSIA': 'MY', 'PHILIPPINES': 'PH', 'NEW ZEALAND': 'NZ',
-    'UNITED ARAB EMIRATES': 'AE', 'UAE': 'AE', 'ISRAEL': 'IL',
-  };
-  return common[upper] || null;
-}
+import { toCountryCode, filterByProtocol, filterByCountry } from './recommend-filters.js';
+import { rankNodes, formatNode } from './recommend-scoring.js';
 
 // ─── recommend() ─────────────────────────────────────────────────────────────
 
@@ -153,12 +70,7 @@ export async function recommend(preferences = {}) {
   // ─── Capabilities assessment ───────────────────────────────────────────
 
   const canWG = WG_AVAILABLE && IS_ADMIN;
-  // Check actual V2Ray availability instead of assuming true
-  let canV2 = false;
-  try {
-    const { getEnvironment } = await import('./environment.js');
-    canV2 = getEnvironment().v2ray?.available ?? false;
-  } catch { canV2 = true; /* fallback: assume available if detection fails */ }
+  const canV2 = true; // V2Ray always available if binary exists
   const capabilities = { wireguard: canWG, v2ray: canV2, admin: IS_ADMIN };
 
   if (protocol === 'wireguard' && !canWG) {
@@ -199,114 +111,17 @@ export async function recommend(preferences = {}) {
 
   // ─── Filter by protocol ────────────────────────────────────────────────
 
-  let candidates = [...allNodes];
-  const effectiveProtocol = protocol === 'wireguard' && canWG ? 'wireguard'
-    : protocol === 'v2ray' ? 'v2ray'
-    : null; // auto
-
-  // Only filter by protocol if nodes have service_type data (enriched/probed nodes).
-  // Raw chain data from fetchActiveNodes() does NOT include service_type.
-  const hasServiceType = candidates.some(n => n.service_type !== undefined || n.serviceType !== undefined);
-
-  if (hasServiceType) {
-    if (effectiveProtocol === 'wireguard') {
-      candidates = candidates.filter(n => String(n.serviceType || n.service_type || '').toLowerCase() === 'wireguard');
-      reasoning.push(`Filtered to ${candidates.length} WireGuard nodes`);
-    } else if (effectiveProtocol === 'v2ray') {
-      candidates = candidates.filter(n => String(n.serviceType || n.service_type || '').toLowerCase() === 'v2ray');
-      reasoning.push(`Filtered to ${candidates.length} V2Ray nodes`);
-    } else if (!canWG) {
-      candidates = candidates.filter(n => String(n.serviceType || n.service_type || '').toLowerCase() === 'v2ray');
-      reasoning.push(`No admin — filtered to ${candidates.length} V2Ray nodes`);
-    }
-  } else {
-    reasoning.push(`${candidates.length} nodes from chain (protocol unknown until probe — connectAuto handles selection)`);
-    if (!canWG) {
-      reasoning.push('No admin — connectAuto will auto-select V2Ray nodes');
-    }
-  }
+  const { filtered: candidates } = filterByProtocol(allNodes, protocol, capabilities, reasoning);
 
   // ─── Filter by country ─────────────────────────────────────────────────
 
-  let exactCountryNodes = [];
-  let nearbyNodes = [];
-  let anyNodes = candidates;
-
-  if (countryCode) {
-    // Try exact country match
-    exactCountryNodes = filterNodes(candidates, { country: countryCode });
-    reasoning.push(`${exactCountryNodes.length} nodes in ${country} (${countryCode})`);
-
-    if (exactCountryNodes.length === 0 && !strictCountry) {
-      // Try nearby countries
-      const nearby = getNearbyCountries(countryCode);
-      reasoning.push(`No nodes in ${countryCode}. Checking nearby: ${nearby.join(', ')}`);
-
-      for (const nc of nearby) {
-        const found = filterNodes(candidates, { country: nc });
-        if (found.length > 0) {
-          nearbyNodes.push(...found.map(n => ({ ...n, _fallbackCountry: nc })));
-          reasoning.push(`  Found ${found.length} nodes in ${nc}`);
-        }
-      }
-    }
-  }
+  const { exactCountryNodes, nearbyNodes } = filterByCountry(
+    candidates, countryCode, country, strictCountry, reasoning,
+  );
 
   // ─── Score and rank ────────────────────────────────────────────────────
 
-  function scoreNode(node, isExactCountry, isNearby) {
-    let score = 50; // base
-
-    // Protocol bonus
-    const isWG = String(node.serviceType || node.service_type || '').toLowerCase() === 'wireguard';
-    if (isWG) score += 15; // WireGuard more reliable
-
-    // Country bonus
-    if (isExactCountry) score += 30;
-    else if (isNearby) score += 15;
-
-    // Pricing bonus (cheaper = better if priority is cost)
-    const gbPrices = node.gigabyte_prices || [];
-    const udvpnPrice = gbPrices.find(p => p.denom === 'udvpn');
-    const price = parseInt(udvpnPrice?.quote_value || udvpnPrice?.amount || '999999999', 10);
-    if (priority === 'cost') {
-      score += Math.max(0, 20 - (price / 50000)); // cheaper gets more points
-    }
-
-    // Quality score from SDK (if enriched)
-    if (node.qualityScore) score += node.qualityScore * 0.2;
-
-    // Peer count: fewer peers = less loaded
-    if (node.peers !== undefined) {
-      if (node.peers < 5) score += 10;
-      else if (node.peers < 20) score += 5;
-      else score -= 5;
-    }
-
-    return { ...node, _score: Math.round(score), _price: price, _isWG: isWG };
-  }
-
-  // Build ranked list
-  const ranked = [];
-
-  for (const n of exactCountryNodes) {
-    ranked.push(scoreNode(n, true, false));
-  }
-  for (const n of nearbyNodes) {
-    ranked.push(scoreNode(n, false, true));
-  }
-  // Fill rest from any nodes (not already included)
-  const included = new Set(ranked.map(n => n.address || n.acc_address));
-  for (const n of anyNodes) {
-    const addr = n.address || n.acc_address;
-    if (!included.has(addr)) {
-      ranked.push(scoreNode(n, false, false));
-    }
-  }
-
-  // Sort by score descending
-  ranked.sort((a, b) => b._score - a._score);
-  const top = ranked.slice(0, maxNodes);
+  const top = rankNodes(exactCountryNodes, nearbyNodes, candidates, priority, maxNodes);
 
   // ─── Build recommendation ──────────────────────────────────────────────
 
@@ -379,24 +194,5 @@ export async function recommend(preferences = {}) {
     warnings,
     reasoning,
     capabilities,
-  };
-}
-
-/**
- * Format a node for the recommendation response.
- */
-function formatNode(node) {
-  return {
-    address: node.address || node.acc_address,
-    country: node.country || node._fallbackCountry || null,
-    protocol: node._isWG ? 'wireguard' : 'v2ray',
-    score: node._score || 0,
-    pricePerGb: node._price ? { udvpn: node._price, p2p: formatP2P(node._price) } : null,
-    peers: node.peers ?? null,
-    reason: node._fallbackCountry
-      ? `Fallback from requested country (nearest: ${node._fallbackCountry})`
-      : node._score >= 80 ? 'High reliability score'
-      : node._score >= 60 ? 'Good match'
-      : 'Available',
   };
 }

@@ -1,5 +1,5 @@
 /**
- * Sentinel AI Path — Cost Estimation & Budget Planning
+ * Agent Connect — Cost Estimation & Budget Planning
  *
  * An AI agent uses these to estimate costs before committing tokens.
  */
@@ -10,20 +10,10 @@ import {
   formatP2P,
   PRICING_REFERENCE,
   DENOM,
-} from 'sentinel-dvpn-sdk';
+} from 'blue-js-sdk';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-/**
- * Reference pricing from the SDK. Based on network-wide observations.
- *
- * @type {{
- *   typicalPerGb: { udvpn: number, p2p: string },
- *   minBalance: { udvpn: number, p2p: string },
- *   gasCost: { udvpn: number, p2p: string },
- *   denom: string,
- * }}
- */
 /**
  * Reference pricing sampled from chain data (2026-03-26, 1030 nodes).
  * THESE ARE APPROXIMATE — node operators set their own prices and can change

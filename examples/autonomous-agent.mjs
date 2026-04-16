@@ -14,7 +14,7 @@
  */
 
 import 'dotenv/config';
-import { connect, disconnect, status, isVpnActive, createWallet, getBalance } from '../index.js';
+import { connect, disconnect, status, isVpnActive, createWallet, getBalance } from 'blue-agent-connect';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 

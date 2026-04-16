@@ -1,5 +1,5 @@
 /**
- * Sentinel AI Path — Error Types
+ * Agent Connect — Error Types
  *
  * Typed errors with machine-readable codes for AI agent error handling.
  * Every error includes a `nextAction` field telling the agent what to do.

@@ -1,5 +1,5 @@
 /**
- * Sentinel AI Path — Environment Detection & Setup
+ * Agent Connect — Environment Detection & Setup
  *
  * Detects OS, checks all dependencies, reports what's available.
  * An AI agent calls setup() first to understand what it can do.
@@ -11,11 +11,12 @@ import {
   WG_AVAILABLE,
   V2RAY_VERSION,
   preflight,
-} from 'sentinel-dvpn-sdk';
+} from 'blue-js-sdk';
 import { existsSync } from 'fs';
 import { execSync } from 'child_process';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -33,31 +34,21 @@ function findV2Ray() {
     return process.env.V2RAY_PATH;
   }
 
-  // 2. Use Node.js module resolution to find the SDK, then derive bin/ path
+  // 2. blue-js-sdk bin/ (resolve through npm package)
   try {
-    const sdkMain = import.meta.resolve('sentinel-dvpn-sdk');
-    const sdkDir = dirname(fileURLToPath(sdkMain));
-    const sdkBin = resolve(sdkDir, 'bin', binary);
+    const require = createRequire(import.meta.url);
+    const sdkPath = dirname(require.resolve('blue-js-sdk'));
+    const sdkBin = resolve(sdkPath, 'bin', binary);
     if (existsSync(sdkBin)) return sdkBin;
-  } catch {}
+  } catch { /* blue-js-sdk not resolvable */ }
 
-  // 3. Walk up from __dirname looking for sentinel-dvpn-sdk/bin/
-  let dir = __dirname;
-  for (let i = 0; i < 5; i++) {
-    const candidate = resolve(dir, 'node_modules', 'sentinel-dvpn-sdk', 'bin', binary);
-    if (existsSync(candidate)) return candidate;
-    const sibling = resolve(dir, '..', 'sentinel-dvpn-sdk', 'bin', binary);
-    if (existsSync(sibling)) return sibling;
-    dir = resolve(dir, '..');
-  }
-
-  // 4. Local bin/
+  // 3. Local bin/
   const localBin = resolve(__dirname, 'bin', binary);
   if (existsSync(localBin)) return localBin;
 
-  // 5. Parent bin/ (monorepo layout)
-  const parentBin = resolve(__dirname, '..', 'bin', binary);
-  if (existsSync(parentBin)) return parentBin;
+  // 4. Sibling bin/ (when SDK is installed as npm package)
+  const siblingBin = resolve(__dirname, '..', 'bin', binary);
+  if (existsSync(siblingBin)) return siblingBin;
 
   // 5. System paths
   const systemPaths = process.platform === 'win32'
@@ -217,12 +208,10 @@ export async function setup() {
   const env = getEnvironment();
   const issues = [];
 
-  // Run preflight checks — pass already-detected V2Ray path to avoid contradiction (BUG-1 fix)
+  // Run preflight checks (network, chain reachability, etc.)
   let preflightResult = null;
   try {
-    const preflightOpts = {};
-    if (env.v2ray?.path) preflightOpts.v2rayExePath = env.v2ray.path;
-    preflightResult = await preflight(preflightOpts);
+    preflightResult = await preflight();
   } catch (err) {
     issues.push(`Preflight failed: ${err.message}`);
   }

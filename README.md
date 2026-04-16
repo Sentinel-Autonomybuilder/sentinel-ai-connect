@@ -1,10 +1,10 @@
-# sentinel-ai-connect
+# blue-agent-connect
 
 The world's first decentralized VPN SDK designed for AI agents. Zero accounts, zero servers, zero centralized dependencies. One function call to encrypted P2P tunnel.
 
 No API keys. No terms of service. No human approval required.
 
-Built on [Sentinel.co](https://sentinel.co)
+Built on [Sentinel.co](https://sentinel.co) | Powered by [blue-js-sdk](https://www.npmjs.com/package/blue-js-sdk)
 
 ---
 
@@ -18,11 +18,11 @@ Built on [Sentinel.co](https://sentinel.co)
 > npm init -y
 >
 > # Step 2: Install this package as a DEPENDENCY
-> npm install sentinel-ai-connect
+> npm install blue-agent-connect
 >
 > # Step 3: Create your app file
 > cat > app.mjs << 'EOF'
-> import { connect, disconnect, createWallet, getBalance } from 'sentinel-ai-connect';
+> import { connect, disconnect, createWallet, getBalance } from 'blue-agent-connect';
 >
 > // Create a wallet (save the mnemonic — it controls your funds)
 > const wallet = await createWallet();
@@ -48,17 +48,29 @@ Built on [Sentinel.co](https://sentinel.co)
 ## Install
 
 ```bash
-npm install sentinel-ai-connect
+npm install blue-agent-connect
 ```
 
 ## Quick Start (5 Lines)
 
 ```javascript
-import { connect, disconnect } from 'sentinel-ai-connect';
+import { connect, disconnect } from 'blue-agent-connect';
 
 const vpn = await connect({ mnemonic: process.env.MNEMONIC });
 console.log(`Connected via ${vpn.protocol} — IP: ${vpn.ip}`);
 await disconnect();
+```
+
+## CLI
+
+```bash
+npx blue-agent-connect setup              # Check environment
+npx blue-agent-connect wallet create      # Generate wallet
+npx blue-agent-connect wallet balance     # Check P2P balance
+npx blue-agent-connect connect            # Connect to VPN
+npx blue-agent-connect disconnect         # Disconnect
+npx blue-agent-connect status             # Connection status
+npx blue-agent-connect nodes              # List available nodes
 ```
 
 ## What This Does
@@ -66,7 +78,7 @@ await disconnect();
 An AI agent installs this package, funds a wallet with P2P tokens, and gets private internet access through 900+ peer-to-peer nodes across 90+ countries. No signup. No API key. No human in the loop.
 
 ```
-AI Agent → sentinel-ai-connect → Sentinel SDK → Blockchain TX → P2P Node → Encrypted Tunnel → Internet
+AI Agent → blue-agent-connect → blue-js-sdk → Blockchain TX → P2P Node → Encrypted Tunnel → Internet
 ```
 
 ## Features
@@ -83,7 +95,7 @@ AI Agent → sentinel-ai-connect → Sentinel SDK → Blockchain TX → P2P Node
 V2Ray creates a local SOCKS5 proxy. Only traffic you explicitly route through it goes through the VPN. Your chain queries, npm installs, and other operations stay on direct internet — fast and unaffected.
 
 ```javascript
-import { connect, disconnect } from 'sentinel-ai-connect';
+import { connect, disconnect } from 'blue-agent-connect';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import axios from 'axios';
 
@@ -106,19 +118,23 @@ await disconnect();
 | `connect(opts)` | Connect to VPN. Returns `{ sessionId, protocol, ip, socksPort }` |
 | `disconnect()` | Tear down tunnel |
 | `verify()` | Confirm tunnel works |
-| `verifySplitTunnel()` | Confirm split tunnel (proxy IP ≠ direct IP) |
+| `verifySplitTunnel()` | Confirm split tunnel (proxy IP != direct IP) |
 | `status()` | Current connection state |
 | `isVpnActive()` | Boolean tunnel check |
 | `createWallet()` | Generate new wallet |
 | `importWallet(m)` | Import existing wallet |
 | `getBalance(m)` | Check P2P token balance |
 | `discoverNodes(opts)` | Find available nodes |
+| `getNodeInfo(addr)` | Specific node details |
 | `getNetworkStats()` | Network overview |
 | `estimateCost(opts)` | Estimate session cost |
 | `recommend(prefs)` | AI decision engine — picks best node |
 | `onEvent(cb)` | Subscribe to lifecycle events |
 | `setup()` | Check environment (V2Ray, WireGuard, Node.js) |
 | `getEnvironment()` | Synchronous environment snapshot |
+| `PRICING` | Reference pricing constants |
+| `AiPathError` | Typed errors with machine-readable codes |
+| `AiPathErrorCodes` | Error code constants |
 
 ## Requirements
 
@@ -129,11 +145,15 @@ await disconnect();
 
 ## Documentation
 
-- [CHECKLIST.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/CHECKLIST.md) — 9 operational checklists
-- [SPLIT-TUNNEL.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/SPLIT-TUNNEL.md) — Per-app and per-destination split tunneling
-- [CONNECTION-STEPS.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/CONNECTION-STEPS.md) — Every phase with real output and failure diagnosis
-- [FAILURES.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/FAILURES.md) — 38 documented failure patterns
-- [AI-MANIFESTO.md](https://github.com/Sentinel-Autonomybuilder/sentinel-ai-connect/blob/master/AI-MANIFESTO.md) — Why AI deserves privacy
+- [CHECKLIST.md](./CHECKLIST.md) — 9 operational checklists
+- [SPLIT-TUNNEL.md](./SPLIT-TUNNEL.md) — Per-app and per-destination split tunneling
+- [CONNECTION-STEPS.md](./CONNECTION-STEPS.md) — Every phase with real output and failure diagnosis
+- [FAILURES.md](./FAILURES.md) — 38 documented failure patterns
+- [AI-MANIFESTO.md](./AI-MANIFESTO.md) — Why AI deserves privacy
+
+## Attribution
+
+This package is built on top of [blue-js-sdk](https://www.npmjs.com/package/blue-js-sdk), the JavaScript SDK for the [Sentinel Network](https://sentinel.co). blue-js-sdk is a fork of the original [sentinel-js-sdk](https://github.com/niceDev0908/sentinel-js-sdk) by Dan Edlebeck / Sentinel team.
 
 ## License
 

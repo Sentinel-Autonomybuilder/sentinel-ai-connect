@@ -1,6 +1,10 @@
 MIT License
 
-Copyright (c) 2026 Sentinel dVPN Contributors
+Copyright (c) 2026 Norse Labs
+
+Derived from blue-js-sdk (https://github.com/Sentinel-Autonomybuilder/sentinel-dvpn-sdk)
+Protocol based on the Sentinel Network (https://sentinel.co)
+Original Sentinel Go SDK: Apache-2.0 (https://github.com/sentinel-official/sentinel-go-sdk)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

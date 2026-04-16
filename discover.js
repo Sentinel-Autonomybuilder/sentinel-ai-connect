@@ -1,5 +1,5 @@
 /**
- * Sentinel AI Path — Node Discovery & Selection
+ * Agent Connect — Node Discovery & Selection
  *
  * An AI agent uses these functions to find the best node for its needs:
  * budget, location, protocol, speed.
@@ -14,31 +14,26 @@ import {
   groupNodesByCountry,
   formatP2P,
   TRANSPORT_SUCCESS_RATES,
-  LCD_ENDPOINTS,
-  tryWithFallback,
-} from 'sentinel-dvpn-sdk';
+} from 'blue-js-sdk';
 
 // ─── discoverNodes() ─────────────────────────────────────────────────────────
 
 /**
- * Discover all available nodes on the Sentinel network.
- * Returns every active node with address, protocol, pricing, and remote URL.
- *
- * By default queries the blockchain directly (fast, returns ALL nodes).
- * Set opts.probe = true to individually probe each node for live status.
+ * Discover available nodes with optional filters.
+ * Returns enriched node list sorted by quality score.
  *
  * @param {object} [opts]
  * @param {string} [opts.country] - Filter by country name or code (e.g. 'Germany', 'DE')
  * @param {string} [opts.protocol] - Filter by protocol: 'wireguard' or 'v2ray'
  * @param {number} [opts.maxPrice] - Max price in udvpn per GB (filter expensive nodes)
- * @param {number} [opts.limit] - Max nodes to return (default: all)
- * @param {boolean} [opts.probe] - If true, probe each node individually for live status (slow). Default: false
+ * @param {number} [opts.limit] - Max nodes to return (default: 50)
+ * @param {boolean} [opts.quick] - If true, use chain-only data (fast, no probing). Default: false
  * @param {function} [opts.onProgress] - Progress callback: ({ total, probed, online }) => void
  * @returns {Promise<Array<{
  *   address: string,
  *   country: string|null,
  *   protocol: string,
- *   pricePerGb: { udvpn: number, p2p: string }|null,
+ *   pricePerGb: { udvpn: number, p2p: string },
  *   pricePerHour: { udvpn: number, p2p: string }|null,
  *   score: number,
  *   peers: number,
@@ -49,24 +44,18 @@ export async function discoverNodes(opts = {}) {
   if (opts && typeof opts !== 'object') {
     throw new Error('discoverNodes(): opts must be an object or undefined');
   }
-
+  const limit = opts.limit || 50;
   let nodes;
 
-  if (opts.probe) {
-    // Slow path: probe each node for live status, peers, location
-    const maxNodes = opts.limit ? opts.limit * 3 : 3000;
+  if (opts.quick) {
+    // Fast path: chain data only, no individual node probing
+    nodes = await fetchActiveNodes();
+  } else {
+    // Full path: probe each node for status, country, peers, score
     nodes = await queryOnlineNodes({
-      maxNodes,
+      maxNodes: Math.min(limit * 3, 300), // Over-fetch to have room after filtering
       onNodeProbed: opts.onProgress || undefined,
     });
-  } else {
-    // Fast path: query blockchain for all active nodes (default)
-    const { result } = await tryWithFallback(
-      LCD_ENDPOINTS,
-      fetchActiveNodes,
-      'discoverNodes',
-    );
-    nodes = result;
   }
 
   // Apply filters
@@ -74,10 +63,8 @@ export async function discoverNodes(opts = {}) {
     nodes = filterNodes(nodes, { country: opts.country });
   }
   if (opts.protocol) {
-    nodes = nodes.filter(n => {
-      const type = String(n.serviceType || n.service_type || '').toLowerCase();
-      return type === opts.protocol;
-    });
+    const wantType = opts.protocol === 'wireguard' ? 2 : 1;
+    nodes = nodes.filter(n => n.service_type === wantType || n.serviceType === wantType);
   }
 
   // Enrich with clean structure
@@ -100,15 +87,12 @@ export async function discoverNodes(opts = {}) {
     return {
       address: n.address || n.acc_address,
       country: n.country || n.location?.country || null,
-      protocol: (() => {
-        const t = String(n.serviceType || n.service_type || '').toLowerCase();
-        return t === 'wireguard' || t === 'v2ray' ? t : null;
-      })(),
+      protocol: (n.service_type === 2 || n.serviceType === 2) ? 'wireguard' : 'v2ray',
       pricePerGb,
       pricePerHour,
       score: n.qualityScore ?? n.score ?? 0,
-      peers: n.peers ?? null,
-      remoteUrl: n.remote_url || n.remote_addrs?.[0] || '',
+      peers: n.peers ?? 0,
+      remoteUrl: n.remote_addrs?.[0] || n.remote_url || '',
     };
   });
 
@@ -118,14 +102,17 @@ export async function discoverNodes(opts = {}) {
       n.pricePerGb && n.pricePerGb.udvpn <= opts.maxPrice
     );
     if (filtered.length > 0) {
-      const sorted = filtered.sort((a, b) => (b.score || 0) - (a.score || 0));
-      return opts.limit ? sorted.slice(0, opts.limit) : sorted;
+      return filtered.sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, limit);
     }
   }
 
-  // Sort by score descending
+  // Sort by score descending, slice to limit
   const sorted = enriched.sort((a, b) => (b.score || 0) - (a.score || 0));
-  return opts.limit ? sorted.slice(0, opts.limit) : sorted;
+  const result = sorted.slice(0, limit);
+  // Attach total count so consumers know the full network size
+  result.total = sorted.length;
+  result.showing = result.length;
+  return result;
 }
 
 // ─── getNodeInfo() ───────────────────────────────────────────────────────────
@@ -162,7 +149,7 @@ export async function getNetworkStats() {
   return {
     totalNodes: overview.totalNodes || overview.total || 0,
     byCountry: overview.byCountry || {},
-    byProtocol: overview.byType || overview.byProtocol || { wireguard: 0, v2ray: 0 },
+    byProtocol: overview.byProtocol || { wireguard: 0, v2ray: 0 },
     transportReliability: { ...TRANSPORT_SUCCESS_RATES },
   };
 }
