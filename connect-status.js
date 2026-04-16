@@ -12,7 +12,7 @@ import {
   disconnect as sdkDisconnect,
   getStatus,
   events,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 import {
   agentLog,

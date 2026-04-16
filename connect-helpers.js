@@ -15,7 +15,7 @@ import {
   getBalance as sdkGetBalance,
   tryWithFallback,
   RPC_ENDPOINTS,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@ export async function checkVpnIp(socksPort) {
     if (socksPort) {
       // V2Ray: route IP check through SOCKS5 proxy
       // Use SDK's checkVpnIpViaSocks which has proper module resolution
-      const { checkVpnIpViaSocks } = await import('../js-sdk/index.js');
+      const { checkVpnIpViaSocks } = await import('sentinel-dvpn-sdk');
       if (typeof checkVpnIpViaSocks === 'function') {
         return await checkVpnIpViaSocks(socksPort, IP_CHECK_TIMEOUT);
       }

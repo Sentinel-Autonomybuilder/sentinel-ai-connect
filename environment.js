@@ -11,7 +11,7 @@ import {
   WG_AVAILABLE,
   V2RAY_VERSION,
   preflight,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 import { existsSync } from 'fs';
 import { execSync } from 'child_process';
 import { resolve, dirname } from 'path';

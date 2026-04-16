@@ -10,7 +10,7 @@ import {
   formatP2P,
   PRICING_REFERENCE,
   DENOM,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

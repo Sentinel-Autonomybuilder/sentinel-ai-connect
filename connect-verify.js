@@ -11,7 +11,7 @@
 import {
   isConnected,
   verifyConnection,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 import {
   checkVpnIp,

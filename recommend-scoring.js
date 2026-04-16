@@ -5,7 +5,7 @@
  * for the autonomous agent recommendation engine.
  */
 
-import { formatP2P } from '../js-sdk/index.js';
+import { formatP2P } from 'sentinel-dvpn-sdk';
 
 // ─── Node Scoring ───────────────────────────────────────────────────────────
 

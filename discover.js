@@ -14,7 +14,7 @@ import {
   groupNodesByCountry,
   formatP2P,
   TRANSPORT_SUCCESS_RATES,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 // ─── discoverNodes() ─────────────────────────────────────────────────────────
 

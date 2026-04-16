@@ -27,7 +27,7 @@ import { AiPathError, AiPathErrorCodes, NextActions } from './errors.js';
 import {
   createWallet as sdkCreateWallet,
   formatP2P,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 // ─── Import from split modules ──────────────────────────────────────────────
 

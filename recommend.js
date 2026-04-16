@@ -14,7 +14,7 @@ import {
   formatP2P,
   IS_ADMIN,
   WG_AVAILABLE,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 import { toCountryCode, filterByProtocol, filterByCountry } from './recommend-filters.js';
 import { rankNodes, formatNode } from './recommend-scoring.js';

@@ -12,7 +12,7 @@ import {
   connectAuto,
   connectDirect,
   formatP2P,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 import {
   agentLog,
@@ -41,7 +41,7 @@ export async function resolveNode(opts, envInfo, log, totalSteps) {
     log(4, totalSteps, 'NODE', `Discovering nodes in ${countryUpper} (probing both WireGuard + V2Ray)...`);
 
     try {
-      const { queryOnlineNodes, filterNodes, COUNTRY_MAP } = await import('../js-sdk/index.js');
+      const { queryOnlineNodes, filterNodes, COUNTRY_MAP } = await import('sentinel-dvpn-sdk');
 
       // Probe a large sample WITHOUT protocol filter — find ALL country matches
       const probeCount = Math.max(200, (opts.maxAttempts || 3) * 50);

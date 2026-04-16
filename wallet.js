@@ -18,7 +18,7 @@ import {
   DEFAULT_RPC,
   tryWithFallback,
   RPC_ENDPOINTS,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

@@ -10,7 +10,7 @@ import {
   IS_ADMIN,
   WG_AVAILABLE,
   COUNTRY_MAP,
-} from '../js-sdk/index.js';
+} from 'sentinel-dvpn-sdk';
 
 // ─── Country Proximity Map ──────────────────────────────────────────────────
 
