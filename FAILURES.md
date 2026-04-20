@@ -11,6 +11,7 @@
 |---|------|----------|--------------------------|
 | 1 | **Use v3 LCD paths, not v2** -- v2 returns "Not Implemented" except `/sentinel/provider/v2/` | chain | Zero chain queries work |
 | 2 | **Never trust `count_total` or `next_key`** on Sentinel LCD pagination -- use `limit=5000` single request | chain | Missing 400+ nodes |
+| 2a | **Same rule for RPC: `QueryNodes`/`QueryNodesForPlan` silently truncate at `limit`, never emit `next_key`** -- use `limit=10000` on both endpoints. Old SDK default `limit=500` made plan 36 (803 nodes) look like a 500-node plan. | chain | Plans with >500 nodes return exactly 500; no error, no warning |
 | 3 | **`remote_addrs` is an array, not `remote_url` string** -- LCD v3 changed the field name and format | chain | All connections fail silently (undefined) |
 | 4 | **Session data is nested under `base_session`** -- always access `session.base_session.id` | chain | Silent undefined propagation |
 | 5 | **WireGuard requires Administrator privileges** -- check BEFORE paying for a session | tunnel | Money wasted, no connection |

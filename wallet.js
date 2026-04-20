@@ -14,7 +14,6 @@ import {
   getBalance as sdkGetBalance,
   createClient,
   formatP2P,
-  LCD_ENDPOINTS,
   DEFAULT_RPC,
   tryWithFallback,
   RPC_ENDPOINTS,
